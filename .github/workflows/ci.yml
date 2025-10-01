@@ -27,12 +27,12 @@ jobs:
 
       - name: Deploy kuberay
         run: |
-          helm upgrade --install kuberay-operator kuberay/kuberay-operator --namespace default --create-namespace
+          helm upgrade --install kuberay-operator kuberay/kuberay-operator --version 1.4.2 --namespace default --create-namespace
       
       - name: Wait for RayCluster CRD
         run: |
           for i in {1..20}; do
-            kubectl get crd rayclusters.ray.io && break
+            kubectl get crd rayclusters.ray.io -o yaml | grep -A5 "versions:" && break
             echo "Waiting for RayCluster CRD..."
             sleep 3
           done    
