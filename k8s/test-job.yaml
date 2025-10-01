@@ -11,7 +11,7 @@ spec:
         image: python:3.10-slim
         command: ["sh", "-c"]
         args:
-          -apt-get update && apt-get install -y curl && pip install prometheus_client && python /app/my_task.py
+          - apt-get update && apt-get install -y curl && pip install prometheus_client && python /app/my_task.py
         volumeMounts:
         - name: script-volume
           mountPath: /app
