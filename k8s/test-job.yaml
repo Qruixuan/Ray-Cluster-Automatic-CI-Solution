@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ray-test-job
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - name: ray-test-task
+        image: python:3.10-slim
+        command: ["python", "/app/my_task.py"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /app
+      restartPolicy: Never
+      volumes:
+      - name: script-volume
+        configMap:
+          name: ray-test-script
+  backoffLimit: 0
