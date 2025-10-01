@@ -59,26 +59,23 @@ jobs:
       - name: Apply PodMonitor
         run: kubectl apply -f ./k8s/podmonitor.yaml
 
-      - name: Wait for Ray head Pod
+      - name: Run task on Ray head pod (background)
         run: |
-          CLUSTER_NAME="raycluster-test"
-          NAMESPACE="default"
-          for i in {1..20}; do
-            HEAD_POD=$(kubectl get pods -l ray.io/cluster=${CLUSTER_NAME},ray.io/node-type=head \
-                        -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
-            if [ -n "$HEAD_POD" ]; then
-              echo "Head Pod found: $HEAD_POD"
-              echo "HEAD_POD=$HEAD_POD" >> $GITHUB_ENV
-              break
-            fi
-            echo "Waiting for head pod..."
-            sleep 5
-          done
+          # 获取 Ray head pod 名字
+          POD_NAME=$(kubectl get pods -l ray.io/cluster=raycluster-test,ray.io/node-type=head \
+            -n default -o jsonpath='{.items[0].metadata.name}')
 
-      - name: Submit job
-        run: |
-          kubectl cp ./my_task.py default/${{ env.HEAD_POD }}:/tmp/my_task.py
-          kubectl exec -n default ${{ env.HEAD_POD }} -- bash -c "python /tmp/my_task.py &"
+          # 获取容器名
+          CONTAINER_NAME=$(kubectl get pod $POD_NAME -n default -o jsonpath='{.spec.containers[0].name}')
+
+          echo "Head pod: $POD_NAME, container: $CONTAINER_NAME"
+
+          # 把脚本复制到 pod 内
+          kubectl cp ./my_task.py default/$POD_NAME:/tmp/my_task.py -c $CONTAINER_NAME
+
+          # 在容器中后台执行，不阻塞 workflow
+          kubectl exec -n default -c $CONTAINER_NAME $POD_NAME -- \
+            sh -c "nohup python /tmp/my_task.py > /tmp/my_task.log 2>&1 &"
 
       - name: Port-forward Prometheus
         run: |
