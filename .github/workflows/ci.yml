@@ -59,20 +59,26 @@ jobs:
       - name: Apply PodMonitor
         run: kubectl apply -f ./k8s/podmonitor.yaml
 
-      - name: Get Ray head info
+      - name: Wait for Ray head Pod
         run: |
           CLUSTER_NAME="raycluster-test"
           NAMESPACE="default"
-          HEAD_SVC="${CLUSTER_NAME}-head-svc"
-          HEAD_POD_IP=$(kubectl get pod -l ray.io/cluster=${CLUSTER_NAME},ray.io/node-type=head \
-            -n ${NAMESPACE} -o jsonpath='{.items[0].status.podIP}')
-          echo "HEAD_SVC=${HEAD_SVC}" >> $GITHUB_ENV
-          echo "HEAD_POD_IP=${HEAD_POD_IP}" >> $GITHUB_ENV
+          for i in {1..20}; do
+            HEAD_POD=$(kubectl get pods -l ray.io/cluster=${CLUSTER_NAME},ray.io/node-type=head \
+                        -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
+            if [ -n "$HEAD_POD" ]; then
+              echo "Head Pod found: $HEAD_POD"
+              echo "HEAD_POD=$HEAD_POD" >> $GITHUB_ENV
+              break
+            fi
+            echo "Waiting for head pod..."
+            sleep 5
+          done
 
       - name: Submit job
         run: |
-          pip install ray[default]
-          ray job submit --address="http://${{ env.HEAD_SVC }}.default.svc.cluster.local:8265" -- python my_task.py
+          kubectl cp ./ray_metrics.py default/${{ env.HEAD_POD }}:/tmp/ray_metrics.py
+          kubectl exec -n default ${{ env.HEAD_POD }} -- bash -c "python /tmp/ray_metrics.py &"
 
       - name: Port-forward Prometheus
         run: |
