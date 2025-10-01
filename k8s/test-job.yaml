@@ -9,7 +9,9 @@ spec:
       containers:
       - name: ray-test-task
         image: python:3.10-slim
-        command: ["python", "/app/my_task.py"]
+        command: ["sh", "-c"]
+        args:
+          - pip install prometheus_client && python /app/my_task.py
         volumeMounts:
         - name: script-volume
           mountPath: /app
