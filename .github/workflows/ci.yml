@@ -59,11 +59,20 @@ jobs:
       - name: Apply PodMonitor
         run: kubectl apply -f ./k8s/podmonitor.yaml
 
+      - name: Get Ray head info
+        run: |
+          CLUSTER_NAME="raycluster-test"
+          NAMESPACE="default"
+          HEAD_SVC="${CLUSTER_NAME}-head-svc"
+          HEAD_POD_IP=$(kubectl get pod -l ray.io/cluster=${CLUSTER_NAME},ray.io/node-type=head \
+            -n ${NAMESPACE} -o jsonpath='{.items[0].status.podIP}')
+          echo "HEAD_SVC=${HEAD_SVC}" >> $GITHUB_ENV
+          echo "HEAD_POD_IP=${HEAD_POD_IP}" >> $GITHUB_ENV
+
       - name: Submit job
         run: |
           pip install ray[default]
-          ray job submit --address="http://ray-cluster-head.default.svc.cluster.local:8265" \
-              -- python my_task.py
+          ray job submit --address="http://${{ env.HEAD_SVC }}.default.svc.cluster.local:8265" -- python my_task.py
 
       - name: Port-forward Prometheus
         run: |
