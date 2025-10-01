@@ -19,6 +19,11 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v4.3.0
+
+      - name: Create kind cluster
+        run: |
+          kind create cluster --image=kindest/node:v1.26.0 --name test-cluster
+          kubectl cluster-info
         
       - name: Add KubeRay Helm repo
         run: |
@@ -47,11 +52,6 @@ jobs:
           helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
             --namespace monitoring --create-namespace \
             --set grafana.enabled=false
-
-      - name: Create kind cluster
-        run: |
-          kind create cluster --name test-cluster
-          kubectl cluster-info
 
       - name: Apply Ray Cluster
         run: kubectl apply -f ./k8s/ray-cluster.yaml
