@@ -87,10 +87,14 @@ jobs:
             fi
             echo "Waiting for pod to be running..."
             sleep 2
-          done 
+          done
+
+          kubectl port-forward -n default $POD 8000:8000 &
+          PF_PID=$!
+          sleep 2 
 
           for i in {1..20}; do
-            curl -s http://127.0.0.1:8000/metrics >/dev/null 2>&1
+            curl -s http://127.0.0.1:8000/metrics >/dev/null 2>&1 || true
             if [ $? -eq 0 ]; then
               echo "Metrics server is ready"
               break
@@ -98,10 +102,6 @@ jobs:
             echo "Waiting for metrics server..."
             sleep 1
           done
-
-          kubectl port-forward -n default $POD 8000:8000 &
-          PF_PID=$!
-          sleep 2
 
           echo "Scraping metrics 10 times:"
           for j in {1..10}; do
