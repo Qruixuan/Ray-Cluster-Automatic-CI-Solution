@@ -77,8 +77,8 @@ jobs:
 
       - name: Submit job
         run: |
-          kubectl cp ./ray_metrics.py default/${{ env.HEAD_POD }}:/tmp/ray_metrics.py
-          kubectl exec -n default ${{ env.HEAD_POD }} -- bash -c "python /tmp/ray_metrics.py &"
+          kubectl cp ./my_task.py default/${{ env.HEAD_POD }}:/tmp/my_task.py
+          kubectl exec -n default ${{ env.HEAD_POD }} -- bash -c "python /tmp/my_task.py &"
 
       - name: Port-forward Prometheus
         run: |
