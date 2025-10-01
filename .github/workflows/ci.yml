@@ -59,28 +59,21 @@ jobs:
       - name: Apply PodMonitor
         run: kubectl apply -f ./k8s/podmonitor.yaml
 
-      - name: Run task on Ray head pod (background)
+      - name: Create ConfigMap for task
         run: |
-          # 获取 Ray head pod 名字
-          POD_NAME=$(kubectl get pods -l ray.io/cluster=raycluster-test,ray.io/node-type=head \
-            -n default -o jsonpath='{.items[0].metadata.name}')
+          kubectl create configmap ray-test-script \
+            --from-file=my_task.py=./my_task.py \
+            -n default --dry-run=client -o yaml | kubectl apply -f -
 
-          # 获取容器名
-          CONTAINER_NAME=$(kubectl get pod $POD_NAME -n default -o jsonpath='{.spec.containers[0].name}')
+      - name: Apply Test Job
+        run: kubectl apply -f ./k8s/test-job.yaml
 
-          echo "Head pod: $POD_NAME, container: $CONTAINER_NAME"
-
-          # 把脚本复制到 pod 内
-          kubectl cp ./my_task.py default/$POD_NAME:/tmp/my_task.py -c $CONTAINER_NAME
-
-          # 在容器中后台执行，不阻塞 workflow
-          kubectl exec -n default -c $CONTAINER_NAME $POD_NAME -- \
-            sh -c "nohup python /tmp/my_task.py > /tmp/my_task.log 2>&1 &"
-
-      - name: Port-forward Prometheus
+      - name: Wait for Job completion
         run: |
-          kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 &
-          sleep 10
+          kubectl wait --for=condition=complete --timeout=60s job/ray-test-job
+
+      - name: Get Job Logs
+        run: kubectl logs job/ray-test-job
 
       - name: Query PodMonitor metrics
         run: |
